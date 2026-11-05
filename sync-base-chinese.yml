@@ -1,0 +1,41 @@
+name: Sync upstream Chinese base files
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download approved Edopro-Chs assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 'https://github.com/nizhuan-jjr/Edopro-Chs/archive/refs/heads/main.zip' -o upstream.zip
+          unzip -q upstream.zip -d upstream_extract
+          test -s upstream_extract/Edopro-Chs-main/Chs/strings.conf
+          test -s upstream_extract/Edopro-Chs-main/Chs/cards.cdb
+          test -s upstream_extract/Edopro-Chs-main/ygo.ttf
+          mkdir -p Chs fonts
+          cp -R upstream_extract/Edopro-Chs-main/Chs/. Chs/
+          rm -f Chs/cards-unofficial.cdb
+          cp upstream_extract/Edopro-Chs-main/ygo.ttf fonts/ygo.ttf
+          cp upstream_extract/Edopro-Chs-main/LICENSE UPSTREAM_LICENSE.txt
+          rm -rf upstream.zip upstream_extract
+          test -s cards-unofficial.cdb
+      - name: Commit refreshed base files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Chs fonts UPSTREAM_LICENSE.txt
+          if git diff --staged --quiet; then
+            echo 'No changes to commit.'
+          else
+            git commit -m 'Sync upstream Edopro-Chs language and font assets'
+            git push
+          fi
